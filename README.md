@@ -10,7 +10,7 @@ The following steps are needed to build this proof of concept to work:
 - [x] Build a websocket handler that can pass the websocket to the Discord bot (to transmit audio between Discord and TwiML Voice Stream)
 - [ ] WIP: Develop code to transform the PCM audio data (RAW) from Discord to Mulaw/8000 as required by Twilio
 - [ ] Develop code to transform Mulaw/8000 audio from Twilio to PCM for Discord
-- [ ] ⚠️ NEED HELP ⚠️ Develop code to receive and send data over the Websocket with Twilio
+- [ ] ⚠️ NEED HELP ⚠️ Develop code to receive and send data over the Websocket with Twilio in real-time
 - [ ] Add code to easily update the Twilio phone number webhook to use ngrok and the specific Discord Guild/Channel ID parameters
 
 This proof of concept would be even more powerful with the following features:
@@ -26,6 +26,7 @@ Develop a cool proof of concept using .NET to blog about and educate developers 
 - [Sockets Docs for ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-6.0)
 - [Voice TwiML Stream](https://www.twilio.com/docs/voice/twiml/stream): The Voice TwiML docs for streaming audio using websockets
 - [Websocket Manager](https://github.com/radu-matei/websocket-manager): This project isn't being used in this project, but some of the source code is used and modified to fit the needs of the project
+- [NAudio](https://github.com/naudio/NAudio): Helps change the audio from one format to anther
 
 ## Technology choice
 This project will be using .NET 6 and should run on all .NET supported platforms.
