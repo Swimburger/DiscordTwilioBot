@@ -18,6 +18,9 @@ This proof of concept would be even more powerful with the following features:
 2. Configure the webhook with the correct Discord Guild/Channel ID from the bot
 3. Initiate phone call from the Discord server and by calling the phone number
 
+## Goal
+Develop a cool proof of concept using .NET to blog about and educate developers on the Twilio Voice Stream capabilities.
+
 ## Relevant resources
 - [DSharpPlus](https://github.com/DSharpPlus/DSharpPlus): library used to develop the Discord bot
 - [Sockets Docs for ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-6.0)
