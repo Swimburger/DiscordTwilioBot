@@ -63,20 +63,18 @@ public class VoiceModule : BaseCommandModule
 
     private async Task VoiceReceiveHandler(VoiceNextConnection connection, VoiceReceiveEventArgs args)
     {
-        if (twilioSocketConnectionManager.TryGetSocketById(socketId, out var twilioSocket))
+        if (twilioSocketConnectionManager.TryGetSocketById(socketId, out var twilioSocket) && twilioSocket.Socket.State == WebSocketState.Open)
         {
             var media = ConvertPcmToMulawBase64Encoded(args.PcmData);
-            var json = JsonSerializer.Serialize<MediaMessage>(new MediaMessage("media", twilioSocket.StreamSid, new MediaPayload(media)), jsonSerializerOptions);
+            var json = JsonSerializer.Serialize<MediaMessage>
+            (
+                new MediaMessage("media", twilioSocket.StreamSid, new MediaPayload(media)), 
+                jsonSerializerOptions
+            );
             logger.LogInformation(json);
             var bytes = Encoding.Default.GetBytes(json);
-            var arraySegment = new ArraySegment<byte>(bytes);
-            await twilioSocket.Socket.SendAsync(arraySegment, WebSocketMessageType.Text, WebSocketMessageFlags.None, CancellationToken.None);
-
-            var mark = new MarkMessage("mark", twilioSocket.StreamSid, null);
-            json = JsonSerializer.Serialize<MarkMessage>(mark, jsonSerializerOptions);
-            bytes = Encoding.Default.GetBytes(json);
-            arraySegment = new ArraySegment<byte>(bytes);
-            await twilioSocket.Socket.SendAsync(arraySegment, WebSocketMessageType.Text, WebSocketMessageFlags.None, CancellationToken.None);
+            var arraySegment = new ArraySegment<byte>(bytes, 0, bytes.Length);
+            await twilioSocket.Socket.SendAsync(arraySegment, WebSocketMessageType.Text, WebSocketMessageFlags.EndOfMessage, CancellationToken.None);
         }
     }
 
@@ -86,9 +84,9 @@ public class VoiceModule : BaseCommandModule
         int sampleRate = 8000;
         var waveFormat = new WaveFormat(sampleRate, 16, channels);
         var mulawFormat = WaveFormat.CreateMuLawFormat(sampleRate, channels);
-        var rs = new RawSourceWaveStream(pcmData.AsStream(), waveFormat);
+        using var rs = new RawSourceWaveStream(pcmData.AsStream(), waveFormat);
 
-        var bytes = new Byte[(int)rs.Length];
+        var bytes = new byte[(int)rs.Length];
         rs.Seek(0, SeekOrigin.Begin);
         rs.Read(bytes, 0, (int)rs.Length);
         return Convert.ToBase64String(bytes);
@@ -122,6 +120,6 @@ public class VoiceModule : BaseCommandModule
     }
 }
 
-public readonly record struct MediaMessage(string Event, string StreamSid, MediaPayload MediaPayload);
-public readonly record struct MediaPayload(string Media);
+public readonly record struct MediaMessage(string Event, string StreamSid, MediaPayload Media);
+public readonly record struct MediaPayload(string Payload);
 public readonly record struct MarkMessage(string Event, string StreamSid, object obj);

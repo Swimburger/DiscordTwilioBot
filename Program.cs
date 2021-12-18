@@ -10,7 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<TwilioSocketConnectionManager>();
 builder.Services.AddHostedService<DiscordBotWorker>();
 var app = builder.Build();
+var config = app.Services.GetRequiredService<IConfiguration>();
+var publicHostName = config.GetValue<string>("PublicHostName");
 app.UseWebSockets();
+app.MapGet("/", () => "Hello World!");
 app.MapMethods("/connect/{guildId}/{channelId}", new[] { "get", "post" }, (
     HttpResponse response,
     string guildId,
@@ -20,7 +23,7 @@ app.MapMethods("/connect/{guildId}/{channelId}", new[] { "get", "post" }, (
     response.ContentType = "text/xml";
     var twiml = new VoiceResponse();
     var connect = new Connect();
-    connect.Stream(url: $"wss://7632a62e9ef4.ngrok.io/ws/{guildId}/{channelId}");
+    connect.Stream(url: $"wss://{publicHostName}/ws/{guildId}/{channelId}");
     twiml.Append(connect);
     response.WriteAsync(twiml.ToString());
 });
