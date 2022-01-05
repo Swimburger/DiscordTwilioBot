@@ -8,8 +8,8 @@ The following steps are needed to build this proof of concept to work:
 - [x] Build a Discord bot
 - [x] Build a webhook to generate TwiML
 - [x] Build a websocket handler that can pass the websocket to the Discord bot (to transmit audio between Discord and TwiML Voice Stream)
-- [ ] WIP: Develop code to transform the PCM audio data (RAW) from Discord to Mulaw/8000 as required by Twilio
-- [ ] Develop code to transform Mulaw/8000 audio from Twilio to PCM for Discord
+- [ ] ⚠️ NEED HELP ⚠️  Develop code to transform the PCM audio data (RAW) from Discord to Mulaw/8000 as required by Twilio
+- [ ] ⚠️ NEED HELP ⚠️ Develop code to transform Mulaw/8000 audio from Twilio to PCM for Discord
 - [ ] ⚠️ NEED HELP ⚠️ Develop code to receive and send data over the Websocket with Twilio in real-time
 - [ ] Add code to easily update the Twilio phone number webhook to use ngrok and the specific Discord Guild/Channel ID parameters
 
