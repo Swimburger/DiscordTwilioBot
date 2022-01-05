@@ -8,6 +8,7 @@ using DSharpPlus.Entities;
 using DSharpPlus.VoiceNext;
 using DSharpPlus.VoiceNext.EventArgs;
 using Microsoft.Toolkit.HighPerformance;
+using NAudio.Codecs;
 using NAudio.Wave;
 
 namespace DiscordTwilioBot;
@@ -63,9 +64,10 @@ public class VoiceModule : BaseCommandModule
 
     private async Task VoiceReceiveHandler(VoiceNextConnection connection, VoiceReceiveEventArgs args)
     {
+        
         if (twilioSocketConnectionManager.TryGetSocketById(socketId, out var twilioSocket) && twilioSocket.Socket.State == WebSocketState.Open)
         {
-            var media = ConvertPcmToMulawBase64Encoded(args.PcmData);
+            var media = ConvertPcmToMulawBase64Encoded(args.AudioFormat, args.PcmData.ToArray());
             var json = JsonSerializer.Serialize<MediaMessage>
             (
                 new MediaMessage("media", twilioSocket.StreamSid, new MediaPayload(media)), 
@@ -78,18 +80,35 @@ public class VoiceModule : BaseCommandModule
         }
     }
 
-    private static string ConvertPcmToMulawBase64Encoded(ReadOnlyMemory<byte> pcmData)
+    private static string ConvertPcmToMulawBase64Encoded(AudioFormat audioFormat, byte[] pcmData)
     {
-        int channels = 1;
-        int sampleRate = 8000;
-        var waveFormat = new WaveFormat(sampleRate, 16, channels);
-        var mulawFormat = WaveFormat.CreateMuLawFormat(sampleRate, channels);
-        using var rs = new RawSourceWaveStream(pcmData.AsStream(), waveFormat);
+         
+        var sourceFormat = new WaveFormat(audioFormat.SampleRate, 16, audioFormat.ChannelCount);
+        return Convert.ToBase64String(EncodeMuLaw(pcmData, 0, pcmData.Length));
+    }
 
-        var bytes = new byte[(int)rs.Length];
-        rs.Seek(0, SeekOrigin.Begin);
-        rs.Read(bytes, 0, (int)rs.Length);
-        return Convert.ToBase64String(bytes);
+    public static byte[] EncodeMuLaw(byte[] data, int offset, int length)
+    {
+        var encoded = new byte[length / 2];
+        int outIndex = 0;
+        for(int n = 0; n < length; n+=2)
+        {
+            encoded[outIndex++] = MuLawEncoder.LinearToMuLawSample(BitConverter.ToInt16(data, offset + n));
+        }
+        return encoded;
+    }
+
+    public static byte[] DecodeMuLaw(byte[] data, int offset, int length)
+    {
+        var decoded = new byte[length * 2];
+        int outIndex = 0;
+        for (int n = 0; n < length; n++)
+        {
+            short decodedSample = MuLawDecoder.MuLawToLinearSample(data[n + offset]);
+            decoded[outIndex++] = (byte)(decodedSample & 0xFF);
+            decoded[outIndex++] = (byte)(decodedSample >> 8);
+        }
+        return decoded;
     }
 
     private Stream ConvertAudioToPcm(string filePath)
