@@ -51,7 +51,6 @@ public class VoiceModule : BaseCommandModule
 
     private async Task VoiceReceiveHandler(VoiceNextConnection connection, VoiceReceiveEventArgs args)
     {
-        var fileName = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         var ffmpeg = Process.Start(new ProcessStartInfo
         {
             FileName = "ffmpeg",
