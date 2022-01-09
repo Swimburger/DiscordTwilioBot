@@ -40,19 +40,6 @@ public class VoiceModule : BaseCommandModule
         connection.VoiceReceived += VoiceReceiveHandler;
     }
 
-    [Command("play")]
-    public async Task PlayCommand(CommandContext context, string path)
-    {
-        var vnext = context.Client.GetVoiceNext();
-        var connection = vnext.GetConnection(context.Guild);
-
-        var transmit = connection.GetTransmitSink();
-
-        var pcm = ConvertAudioToPcm(path);
-        await pcm.CopyToAsync(transmit);
-        await pcm.DisposeAsync();
-    }
-
     [Command("leave")]
     public async Task LeaveCommand(CommandContext context)
     {
@@ -64,13 +51,38 @@ public class VoiceModule : BaseCommandModule
 
     private async Task VoiceReceiveHandler(VoiceNextConnection connection, VoiceReceiveEventArgs args)
     {
-        
+        var fileName = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        var ffmpeg = Process.Start(new ProcessStartInfo
+        {
+            FileName = "ffmpeg",
+            Arguments = $@"-hide_banner -ac 2 -f s16le -ar 48000 -i pipe:0 -c:a pcm_mulaw -f mulaw -ar 8000 -ac 1 pipe:1",
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true
+        });
+
+        //byte[] trimmedData = new byte[args.PcmData.Length - 44];
+        //Buffer.BlockCopy(args.PcmData.ToArray(), 44, trimmedData, 0, trimmedData.Length);
+
+        await ffmpeg.StandardInput.BaseStream.WriteAsync(args.PcmData);
+        ffmpeg.StandardInput.Close();
+        byte[] data;
+        using(var memoryStream = new MemoryStream())
+        {
+            ffmpeg.StandardOutput.BaseStream.CopyTo(memoryStream);
+            data = memoryStream.ToArray();
+        }
+        ffmpeg.Dispose();
+
+        //byte[] trimmedData = new byte[data.Length - 44];
+        //Buffer.BlockCopy(data, 44, trimmedData, 0, trimmedData.Length);
+
+        //return;
+
         if (twilioSocketConnectionManager.TryGetSocketById(socketId, out var twilioSocket) && twilioSocket.Socket.State == WebSocketState.Open)
         {
-            var media = ConvertPcmToMulawBase64Encoded(args.AudioFormat, args.PcmData.ToArray());
             var json = JsonSerializer.Serialize<MediaMessage>
             (
-                new MediaMessage("media", twilioSocket.StreamSid, new MediaPayload(media)), 
+                new MediaMessage("media", twilioSocket.StreamSid, new MediaPayload(Convert.ToBase64String(data))), 
                 jsonSerializerOptions
             );
             logger.LogInformation(json);
@@ -78,64 +90,6 @@ public class VoiceModule : BaseCommandModule
             var arraySegment = new ArraySegment<byte>(bytes, 0, bytes.Length);
             await twilioSocket.Socket.SendAsync(arraySegment, WebSocketMessageType.Text, WebSocketMessageFlags.EndOfMessage, CancellationToken.None);
         }
-    }
-
-    private static string ConvertPcmToMulawBase64Encoded(AudioFormat audioFormat, byte[] pcmData)
-    {
-         
-        var sourceFormat = new WaveFormat(audioFormat.SampleRate, 16, audioFormat.ChannelCount);
-        return Convert.ToBase64String(EncodeMuLaw(pcmData, 0, pcmData.Length));
-    }
-
-    public static byte[] EncodeMuLaw(byte[] data, int offset, int length)
-    {
-        var encoded = new byte[length / 2];
-        int outIndex = 0;
-        for(int n = 0; n < length; n+=2)
-        {
-            encoded[outIndex++] = MuLawEncoder.LinearToMuLawSample(BitConverter.ToInt16(data, offset + n));
-        }
-        return encoded;
-    }
-
-    public static byte[] DecodeMuLaw(byte[] data, int offset, int length)
-    {
-        var decoded = new byte[length * 2];
-        int outIndex = 0;
-        for (int n = 0; n < length; n++)
-        {
-            short decodedSample = MuLawDecoder.MuLawToLinearSample(data[n + offset]);
-            decoded[outIndex++] = (byte)(decodedSample & 0xFF);
-            decoded[outIndex++] = (byte)(decodedSample >> 8);
-        }
-        return decoded;
-    }
-
-    private Stream ConvertAudioToPcm(string filePath)
-    {
-        var ffmpeg = Process.Start(new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $@"-i ""{filePath}"" -ac 2 -f s16le -ar 48000 pipe:1",
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        });
-
-        return ffmpeg.StandardOutput.BaseStream;
-    }
-
-    private async Task ConvertPcmToAudio(ReadOnlyMemory<byte> pcmData)
-    {
-        var fileName = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-        var ffmpeg = Process.Start(new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $@"-ac 2 -f s16le -ar 48000 -i pipe:0 -ac 2 -ar 44100 Output/{fileName}.wav",
-            RedirectStandardInput = true
-        });
-
-        await ffmpeg.StandardInput.BaseStream.WriteAsync(pcmData);
-        ffmpeg.Dispose();
     }
 }
 
